@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<title>AIRES Dashboard</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<style>
+  body { background:#0a0e0d; color:#e8f0ec; font-family:Arial; padding:15px; text-align:center; }
+  h1 { color:#00e87a; }
+  .card { background:#111714; border:1px solid #1e2b26; border-radius:12px; padding:20px; margin:12px 0; }
+  .value { font-size:42px; font-weight:bold; color:#00e87a; }
+  input[type="range"] { width:100%; margin:15px 0; accent-color: #00e87a; }
+  #debug { margin-top:15px; font-size:13px; color:#0f0; }
+</style>
+</head>
+<body>
+  <h1>🤖 AIRES DASHBOARD (MANUAL)</h1>
+
+  <div class="card">
+    <div class="label">MQ1 INPUT (Sebelum Filter)</div>
+    <div class="value" id="raw1">--</div>
+  </div>
+  <div class="card">
+    <div class="label">MQ2 OUTPUT (Sesudah Filter)</div>
+    <div class="value" id="raw2">--</div>
+  </div>
+  <div class="card">
+    <div class="label">FAN SPEED</div>
+    <div class="value" id="fan">60 %</div>
+    <input type="range" id="slider" min="25" max="100" value="60" 
+           oninput="updateSlider(this.value)" onchange="sendSpeed()">
+  </div>
+  <div class="card">
+    <div class="label">EFISIENSI FILTER</div>
+    <div class="value" id="eff">-- %</div>
+  </div>
+
+  <div id="debug">Menunggu koneksi...</div>
+
+<script>
+const topicData = "aires/aires/data";
+const topicCommand = "aires/aires/command";
+
+let client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
+
+client.on("connect", () => {
+  client.subscribe(topicData);
+  document.getElementById("debug").innerHTML = "✅ Terhubung ke Broker";
+});
+
+client.on("message", (t, payload) => {
+  try {
+    const d = JSON.parse(payload.toString());
+    document.getElementById("raw1").textContent = d.raw1 || "--";
+    document.getElementById("raw2").textContent = d.raw2 || "--";
+    document.getElementById("fan").textContent = (d.fan_out_pct || 60) + " %";
+    document.getElementById("eff").textContent = (d.efisiensi || 0) + " %";
+  } catch(e) {}
+});
+
+function updateSlider(val) {
+  document.getElementById("fan").textContent = val + " %";
+}
+
+function sendSpeed() {
+  const val = document.getElementById("slider").value;
+  client.publish(topicCommand, `speed:${val}`);
+}
+</script>
+</body>
+</html>
